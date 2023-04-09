@@ -1,5 +1,5 @@
 import React from 'react';
-import AppLayout from '../components/applayout';
+import AppLayout from '../components/AppLayout';
 
 const Signup = () => {
   return (
