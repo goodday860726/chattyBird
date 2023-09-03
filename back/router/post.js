@@ -11,7 +11,7 @@ const router = express.Router();
 try {
   fs.accessSync('uploads');
 } catch (error) {
-  console.log('uploads 폴더를 생성합니다.');
+  console.log('create uploads folder');
   fs.mkdirSync('uploads');
 }
 
@@ -46,11 +46,11 @@ router.post('/', isLoggedIn, upload.none(), async (req, res, next) => {
     }
     if (req.body.image) {
       if (Array.isArray(req.body.image)) {
-        // 이미지 복수면 image:[111.png, 222.png]
+        // images image:[111.png, 222.png]
         const images = await Promise.all(req.body.image.map((image) => Image.create({ src: image })));
         await post.addImages(images);
       } else {
-        // 이미지가 하나면 image: 111.png
+        // a image image: 111.png
         const image = await Image.create({ src: req.body.image });
         await post.addImages(image);
       }
@@ -82,7 +82,7 @@ router.get('/:postId', isLoggedIn, async (req, res, next) => {
       where: { id: req.params.postId },
     });
     if (!post) {
-      return res.status(404).send('존재하지 않는 게시글입니다.');
+      return res.status(404).send("Doesn't exist post");
     }
 
     const fullPost = await Post.findOne({
@@ -142,10 +142,10 @@ router.post('/:postId/retweet', isLoggedIn, async (req, res, next) => {
       ],
     });
     if (!post) {
-      return res.status(403).send('존재하지 않는 게시글입니다.');
+      return res.status(403).send("Doesn't exist post");
     }
     if (req.user.id === post.UserId || (post.Retweet && post.Retweet.UserId === req.user.id)) {
-      return res.status(403).send('자신의 글은 리트윗할 수 없습니다.');
+      return res.status(403).send('Can not reChatty your post');
     }
     const retweetTargetId = post.RetweetId || post.id;
     const exPost = await Post.findOne({
@@ -155,7 +155,7 @@ router.post('/:postId/retweet', isLoggedIn, async (req, res, next) => {
       },
     });
     if (exPost) {
-      return res.status(403).send('이미 리트윗 헀습니다.');
+      return res.status(403).send('Already reChatty');
     }
     const retweet = await Post.create({
       UserId: req.user.id,
@@ -214,7 +214,7 @@ router.post('/:postId/comment', isLoggedIn, async (req, res, next) => {
       where: { id: req.params.postId },
     });
     if (!post) {
-      return res.status(403).send('존재하지 않는 게시글입니다.');
+      return res.status(403).send("Doesn't exist post");
     }
     const comment = await Comment.create({
       content: req.body.content,
@@ -238,7 +238,7 @@ router.patch('/:postId/like', isLoggedIn, async (req, res, next) => {
       where: { id: req.params.postId },
     });
     if (!post) {
-      return res.status(403).send('존재하지 않는 게시글입니다.');
+      return res.status(403).send("Doesn't exist post");
     }
     await post.addLikers(req.user.id);
     res.json({ PostId: post.id, UserId: req.user.id });
@@ -253,7 +253,7 @@ router.delete('/:postId/like', isLoggedIn, async (req, res, next) => {
       where: { id: req.params.postId },
     });
     if (!post) {
-      return res.status(403).send('존재하지 않는 게시글입니다.');
+      return res.status(403).send("Doesn't exist post");
     }
     await post.removeLikers(req.user.id);
     res.json({ PostId: post.id, UserId: req.user.id });
