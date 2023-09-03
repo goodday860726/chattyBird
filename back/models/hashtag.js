@@ -5,7 +5,6 @@ module.exports = class Hashtag extends Model {
   static init(sequelize) {
     return super.init(
       {
-        // id is included by default.
         name: {
           type: DataTypes.STRING(20),
           allowNull: false,
@@ -15,7 +14,7 @@ module.exports = class Hashtag extends Model {
         modelName: 'Hashtag',
         tableName: 'hashtags',
         charset: 'utf8mb4',
-        collate: 'utf8mb4_general_ci',
+        collate: 'utf8mb4_general_ci', // emoji
         sequelize,
       }
     );

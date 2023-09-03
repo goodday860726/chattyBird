@@ -5,7 +5,6 @@ module.exports = class Comment extends Model {
   static init(sequelize) {
     return super.init(
       {
-        // id is included by default.
         content: {
           type: DataTypes.TEXT,
           allowNull: false,
@@ -17,7 +16,7 @@ module.exports = class Comment extends Model {
         modelName: 'Comment',
         tableName: 'comments',
         charset: 'utf8mb4',
-        collate: 'utf8mb4_general_ci', // save emoji
+        collate: 'utf8mb4_general_ci', // emoji
         sequelize,
       }
     );

@@ -5,7 +5,6 @@ module.exports = class Image extends Model {
   static init(sequelize) {
     return super.init(
       {
-        // id is included by default.
         src: {
           type: DataTypes.STRING(200),
           allowNull: false,

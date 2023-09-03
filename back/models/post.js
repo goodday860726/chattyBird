@@ -5,7 +5,6 @@ module.exports = class Post extends Model {
   static init(sequelize) {
     return super.init(
       {
-        // id is included by default.
         content: {
           type: DataTypes.TEXT,
           allowNull: false,
@@ -16,7 +15,7 @@ module.exports = class Post extends Model {
         modelName: 'Post',
         tableName: 'posts',
         charset: 'utf8mb4',
-        collate: 'utf8mb4_general_ci',
+        collate: 'utf8mb4_general_ci', // emoji
         sequelize,
       }
     );
@@ -24,7 +23,7 @@ module.exports = class Post extends Model {
   static associate(db) {
     db.Post.belongsTo(db.User); // post.addUser, post.getUser, post.setUser
     db.Post.belongsToMany(db.Hashtag, { through: 'PostHashtag' }); // post.addHashtags
-    db.Post.hasMany(db.Report);
+    // db.Post.hasMany(db.Report);
     db.Post.hasMany(db.Comment); // post.addComments, post.getComments
     db.Post.hasMany(db.Image); // post.addImages, post.getImages
     db.Post.belongsToMany(db.User, { through: 'Like', as: 'Likers' }); // post.addLikers, post.removeLikers

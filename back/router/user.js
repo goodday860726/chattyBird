@@ -1,15 +1,14 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const passport = require('passport');
-const { Op } = require('sequelize');
 
-const { User, Post, Image, Comment } = require('../models');
+const { User, Post } = require('../models');
 const { isLoggedIn, isNotLoggedIn } = require('./middlewares');
 
 const router = express.Router();
 
+// GET /user
 router.get('/', async (req, res, next) => {
-  // GET /user
   try {
     if (req.user) {
       const fullUserWithoutPassword = await User.findOne({
@@ -18,22 +17,12 @@ router.get('/', async (req, res, next) => {
           exclude: ['password'],
         },
         include: [
-          {
-            model: Post,
-            attributes: ['id'],
-          },
-          {
-            model: User,
-            as: 'Followings',
-            attributes: ['id'],
-          },
-          {
-            model: User,
-            as: 'Followers',
-            attributes: ['id'],
-          },
+          { model: Post, attributes: ['id'] },
+          { model: User, as: 'Followings', attributes: ['id'] },
+          { model: User, as: 'Followers', attributes: ['id'] },
         ],
       });
+
       res.status(200).json(fullUserWithoutPassword);
     } else {
       res.status(200).json(null);
@@ -44,15 +33,17 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// GET /user/followers
 router.get('/followers', isLoggedIn, async (req, res, next) => {
-  // GET /user/followers
   try {
+    console.log('followers :::::user', req.user.id);
     const user = await User.findOne({ where: { id: req.user.id } });
     if (!user) {
-      res.status(403).send('This user is not exist');
+      res.status(403).send('User did not exist!');
     }
     const followers = await user.getFollowers({
-      limit: parseInt(req.query.limit, 10),
+      limit: 3,
+      // limit: parseInt(req.query.limit, 10),
     });
     res.status(200).json(followers);
   } catch (error) {
@@ -61,15 +52,18 @@ router.get('/followers', isLoggedIn, async (req, res, next) => {
   }
 });
 
+// GET /user/followings
 router.get('/followings', isLoggedIn, async (req, res, next) => {
-  // GET /user/followings
   try {
+    console.log('followings :::::user', req.user.id);
+
     const user = await User.findOne({ where: { id: req.user.id } });
     if (!user) {
-      res.status(403).send('This user is not exist');
+      res.status(403).send('User did not exist!');
     }
     const followings = await user.getFollowings({
-      limit: parseInt(req.query.limit, 10),
+      limit: 3,
+      // limit: parseInt(req.query.limit, 10),
     });
     res.status(200).json(followings);
   } catch (error) {
@@ -78,39 +72,30 @@ router.get('/followings', isLoggedIn, async (req, res, next) => {
   }
 });
 
+// GET /user/1
 router.get('/:userId', async (req, res, next) => {
-  // GET /user/1
   try {
+    console.log('user id hereeeeee', req.params);
     const fullUserWithoutPassword = await User.findOne({
       where: { id: req.params.userId },
       attributes: {
         exclude: ['password'],
       },
       include: [
-        {
-          model: Post,
-          attributes: ['id'],
-        },
-        {
-          model: User,
-          as: 'Followings',
-          attributes: ['id'],
-        },
-        {
-          model: User,
-          as: 'Followers',
-          attributes: ['id'],
-        },
+        { model: Post, attributes: ['id'] },
+        { model: User, as: 'Followings', attributes: ['id'] },
+        { model: User, as: 'Followers', attributes: ['id'] },
       ],
     });
     if (fullUserWithoutPassword) {
+      console.log(fullUserWithoutPassword);
       const data = fullUserWithoutPassword.toJSON();
-      data.Posts = data.Posts.length; // 개인정보 침해 예방
+      data.Posts = data.Posts.length;
       data.Followers = data.Followers.length;
       data.Followings = data.Followings.length;
-      res.status(200).json(data);
+      res.status(200).json(fullUserWithoutPassword);
     } else {
-      res.status(404).json('This user is not exist');
+      res.status(404).json('존재하지 않는 사용자입니다.');
     }
   } catch (error) {
     console.error(error);
@@ -118,75 +103,17 @@ router.get('/:userId', async (req, res, next) => {
   }
 });
 
-router.get('/:userId/posts', async (req, res, next) => {
-  // GET /user/1/posts
-  try {
-    const where = { UserId: req.params.userId };
-    if (parseInt(req.query.lastId, 10)) {
-      // Not initial loading
-      where.id = { [Op.lt]: parseInt(req.query.lastId, 10) };
-    } // 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1
-    const posts = await Post.findAll({
-      where,
-      limit: 10,
-      order: [['createdAt', 'DESC']],
-      include: [
-        {
-          model: User,
-          attributes: ['id', 'nickname'],
-        },
-        {
-          model: Image,
-        },
-        {
-          model: Comment,
-          include: [
-            {
-              model: User,
-              attributes: ['id', 'nickname'],
-              order: [['createdAt', 'DESC']],
-            },
-          ],
-        },
-        {
-          model: User,
-          as: 'Likers',
-          attributes: ['id'],
-        },
-        {
-          model: Post,
-          as: 'Retweet',
-          include: [
-            {
-              model: User,
-              attributes: ['id', 'nickname'],
-            },
-            {
-              model: Image,
-            },
-          ],
-        },
-      ],
-    });
-    res.status(200).json(posts);
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-});
-
+// POST /user/login
 router.post('/login', isNotLoggedIn, (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) {
-      console.error(err);
       return next(err);
     }
     if (info) {
       return res.status(401).send(info.reason);
     }
-    return req.login(user, async (loginErr) => {
+    return req.logIn(user, async (loginErr) => {
       if (loginErr) {
-        console.error(loginErr);
         return next(loginErr);
       }
       const fullUserWithoutPassword = await User.findOne({
@@ -195,20 +122,9 @@ router.post('/login', isNotLoggedIn, (req, res, next) => {
           exclude: ['password'],
         },
         include: [
-          {
-            model: Post,
-            attributes: ['id'],
-          },
-          {
-            model: User,
-            as: 'Followings',
-            attributes: ['id'],
-          },
-          {
-            model: User,
-            as: 'Followers',
-            attributes: ['id'],
-          },
+          { model: Post, attributes: ['id'] },
+          { model: User, as: 'Followings', attributes: ['id'] },
+          { model: User, as: 'Followers', attributes: ['id'] },
         ],
       });
       return res.status(200).json(fullUserWithoutPassword);
@@ -216,8 +132,8 @@ router.post('/login', isNotLoggedIn, (req, res, next) => {
   })(req, res, next);
 });
 
+// POST /user/
 router.post('/', isNotLoggedIn, async (req, res, next) => {
-  // POST /user/
   try {
     const exUser = await User.findOne({
       where: {
@@ -225,7 +141,7 @@ router.post('/', isNotLoggedIn, async (req, res, next) => {
       },
     });
     if (exUser) {
-      return res.status(403).send('Already exist');
+      return res.status(403).send('This email already exists.');
     }
     const hashedPassword = await bcrypt.hash(req.body.password, 12);
     await User.create({
@@ -240,21 +156,21 @@ router.post('/', isNotLoggedIn, async (req, res, next) => {
   }
 });
 
+// POST /user/logout
 router.post('/logout', isLoggedIn, (req, res) => {
-  req.logout();
+  req.logout(() => {});
   req.session.destroy();
   res.send('ok');
 });
 
+// PATCH /user/nickname
 router.patch('/nickname', isLoggedIn, async (req, res, next) => {
   try {
     await User.update(
       {
         nickname: req.body.nickname,
       },
-      {
-        where: { id: req.user.id },
-      }
+      { where: { id: req.user.id } }
     );
     res.status(200).json({ nickname: req.body.nickname });
   } catch (error) {
@@ -263,14 +179,16 @@ router.patch('/nickname', isLoggedIn, async (req, res, next) => {
   }
 });
 
+// PATCH /user/:userId/follow
 router.patch('/:userId/follow', isLoggedIn, async (req, res, next) => {
-  // PATCH /user/1/follow
   try {
-    const user = await User.findOne({ where: { id: req.params.userId } });
+    const user = await User.findOne({
+      where: { id: req.params.userId },
+    });
     if (!user) {
-      res.status(403).send("Trying to following who doesn't exist");
+      res.status(403).send('Do you want to follow ghost user?');
     }
-    await user.addFollowers(req.user.id);
+    await user.addFollower(req.user.id);
     res.status(200).json({ UserId: parseInt(req.params.userId, 10) });
   } catch (error) {
     console.error(error);
@@ -278,12 +196,14 @@ router.patch('/:userId/follow', isLoggedIn, async (req, res, next) => {
   }
 });
 
+// DELETE /user/:userId/follow
 router.delete('/:userId/follow', isLoggedIn, async (req, res, next) => {
-  // DELETE /user/1/follow
   try {
-    const user = await User.findOne({ where: { id: req.params.userId } });
+    const user = await User.findOne({
+      where: { id: req.params.userId },
+    });
     if (!user) {
-      res.status(403).send("Trying to unfollowing who doesn't exist");
+      res.status(403).send('Do you want to unfollow ghost user?');
     }
     await user.removeFollowers(req.user.id);
     res.status(200).json({ UserId: parseInt(req.params.userId, 10) });
@@ -293,15 +213,34 @@ router.delete('/:userId/follow', isLoggedIn, async (req, res, next) => {
   }
 });
 
+// DELETE /user/follower/:userId
 router.delete('/follower/:userId', isLoggedIn, async (req, res, next) => {
-  // DELETE /user/follower/2
   try {
-    const user = await User.findOne({ where: { id: req.params.userId } });
+    const user = await User.findOne({
+      where: { id: req.params.userId },
+    });
     if (!user) {
-      res.status(403).send("Trying to block who doesn't exist");
+      res.status(403).send('Do you want to unfollow ghost user?');
     }
     await user.removeFollowings(req.user.id);
     res.status(200).json({ UserId: parseInt(req.params.userId, 10) });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+});
+
+// GET /user/following
+router.get('/following', async (req, res, next) => {
+  try {
+    const user = await User.findOne({
+      where: { id: req.params.userId },
+    });
+    if (!user) {
+      res.status(403).send('Do you want to unfollow ghost user?');
+    }
+    const followings = await user.getFollowings();
+    res.status(200).json(followings);
   } catch (error) {
     console.error(error);
     next(error);
